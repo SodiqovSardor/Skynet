@@ -1,0 +1,9 @@
+include README.md
+include LICENSE
+include requirements.txt
+include core/personality.txt
+recursive-include core *.py
+recursive-include actuators *.py
+recursive-include sensors *.py
+recursive-include api *.py
+recursive-include memory *.py

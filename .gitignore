@@ -1,0 +1,45 @@
+# Skynet .gitignore — Proprietary Product
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Logs and runtime data
+skynet_logs.json
+*.log
+
+# Sandbox contents (runtime data — keep the dir, ignore generated files)
+sandbox/*.txt
+sandbox/*.log
+sandbox/*.sh
+sandbox/**/__pycache__/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+*.env.local
+
+# API keys (just in case)
+**/api_keys.txt
+**/secrets.txt
