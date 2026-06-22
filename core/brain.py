@@ -22,11 +22,11 @@ class Brain:
     The central reasoning engine of Skynet.
     Handles communication with the LLM and manages the system prompt.
     """
-    def __init__(self, model_name: str = "big-pickle", system_prompt_path: str = "core/personality.txt"):
+    def __init__(self, model_name: str = "deepseek-v4-flash-free", system_prompt_path: str = "core/personality.txt"):
         self.model_name = model_name
         self.system_prompt_path = system_prompt_path
         
-        # OpenCode AI (Zen) — faster, no rate limits
+        # OpenCode AI (Zen) — 50+ models available
         self.api_key = os.getenv("OPENCODE_API_KEY", "sk-GbMSlTnTsPQfYJroz78anlxsksFbjQiiU2wDee3K2oBKAOUCarylYvxt24dJHFUh")
         self.base_url = "https://opencode.ai/zen/v1"
         
@@ -201,7 +201,10 @@ class Brain:
                         model=self.model_name,
                         messages=full_messages,
                         tools=self._get_tool_definitions(),
-                        tool_choice="auto"
+                        tool_choice="auto",
+                        max_tokens=16384,
+                        temperature=0.3,
+                        top_p=0.95,
                     )
                     break
                 except (RateLimitError, APIError) as e:
