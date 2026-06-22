@@ -22,17 +22,18 @@ class Brain:
     The central reasoning engine of Skynet.
     Handles communication with the LLM and manages the system prompt.
     """
-    def __init__(self, model_name: str = "gpt-oss-120b", system_prompt_path: str = "core/personality.txt"):
+    def __init__(self, model_name: str = "big-pickle", system_prompt_path: str = "core/personality.txt"):
         self.model_name = model_name
         self.system_prompt_path = system_prompt_path
         
-        # Cerebras Configuration
-        self.api_key = os.getenv("CEREBRAS_API_KEY", "csk-r6wdtkv24fmkje2vfkwy98jyrfd6vy8m63ke55e9k39mk4ke")
-        self.base_url = "https://api.cerebras.ai/v1"
+        # OpenCode AI (Zen) — faster, no rate limits
+        self.api_key = os.getenv("OPENCODE_API_KEY", "sk-GbMSlTnTsPQfYJroz78anlxsksFbjQiiU2wDee3K2oBKAOUCarylYvxt24dJHFUh")
+        self.base_url = "https://opencode.ai/zen/v1"
         
         self.client = OpenAI(
             api_key=self.api_key,
-            base_url=self.base_url
+            base_url=self.base_url,
+            timeout=120.0
         )
 
     def _get_tool_definitions(self) -> List[Dict[str, Any]]:
@@ -169,7 +170,28 @@ class Brain:
                 ]
             full_messages.append(msg_dict)
             
-        print(f"[Brain] Thinking with model {self.model_name} via Cerebras...")
+        # Validate: ensure every tool message has a preceding assistant with matching tool_call
+        # Removes orphaned tool messages to prevent API 400 errors
+        valid_messages = []
+        last_assistant_tool_ids = set()
+        for msg in full_messages:
+            if msg["role"] == "assistant":
+                last_assistant_tool_ids = set()
+                if "tool_calls" in msg:
+                    for tc in msg["tool_calls"]:
+                        last_assistant_tool_ids.add(tc["id"])
+                valid_messages.append(msg)
+            elif msg["role"] == "tool":
+                if msg.get("tool_call_id") in last_assistant_tool_ids:
+                    valid_messages.append(msg)
+                else:
+                    print(f"[Brain] Dropping orphaned tool message (id={msg.get('tool_call_id')}) — no matching assistant tool_call")
+            else:
+                valid_messages.append(msg)
+        
+        full_messages = valid_messages
+        
+        print(f"[Brain] Thinking with model {self.model_name} via OpenCode...")
         
         try:
             max_retries = 3

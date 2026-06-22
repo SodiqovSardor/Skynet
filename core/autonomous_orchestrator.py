@@ -59,75 +59,61 @@ def extract_tool_calls_from_text(text: str) -> List[Dict[str, Any]]:
 
 class MemoryManager:
     """
-    Manages conversation history to prevent unbounded token growth.
-    Uses a sliding window: keeps recent messages + a summary of older ones.
+    Manages conversation history.
+    No compression — lets the API's large context window handle growth.
+    Trims only when history exceeds a very high threshold to prevent
+    unbounded memory, but does so by dropping COMPLETE oldest cycles.
     """
-    MAX_HISTORY = 30  # max messages before summarization kicks in
+    MAX_HISTORY = 200  # max messages; API has 128k+ context
     
     def __init__(self):
         self.history: List[Message] = []
-        self.summary: Optional[str] = None
-        self.summary_cycle = 0
     
     def add(self, msg: Message) -> None:
         self.history.append(msg)
     
     def get_context(self) -> List[Message]:
-        """Returns the current context window (summary + recent messages)."""
-        if len(self.history) <= self.MAX_HISTORY:
-            return self.history
-        
-        # Build compressed context: summary + last N messages
-        recent = self.history[-self.MAX_HISTORY:]
-        
-        if self.summary:
-            summary_msg = Message(
-                role="system",
-                content=f"[PREVIOUS CONTEXT SUMMARY — up to cycle {self.summary_cycle}]:\n{self.summary}\n\n---\nContinuing below:"
-            )
-            return [summary_msg] + recent
-        
-        return recent
+        """Returns the current history (no summarization)."""
+        return self.history
     
     def compress(self, current_cycle: int) -> None:
         """
-        Compresses old history into a summary when threshold is exceeded.
-        Extracts key facts: files created, commands run, tools created.
+        If history is wildly over limit, drop the first COMPLETE cycle boundary.
+        Finds the first assistant→tool batch and drops everything before it.
         """
         if len(self.history) <= self.MAX_HISTORY:
             return
         
-        # Extract key facts from old messages
-        old = self.history[:-self.MAX_HISTORY]
-        facts = []
-        
-        for msg in old:
+        # Find the first complete cycle boundary: iterate until we find
+        # an assistant message followed by its tool results
+        drop_until = 0
+        for i in range(1, len(self.history)):
+            msg = self.history[i-1]
+            next_msg = self.history[i]
+            
+            # If this is an assistant with tool_calls, skip past its tool results
+            if msg.role == "assistant" and msg.tool_calls:
+                # Skip ahead to find where tool results end
+                j = i
+                while j < len(self.history) and self.history[j].role == "tool":
+                    j += 1
+                # j is now past all tool results; this is a complete cycle boundary
+                drop_until = j
+                break
+            
+            # Also safe after a tool batch ends (tool → non-tool transition)
             if msg.role == "tool":
-                content = msg.content or ""
-                if "Successfully wrote" in content:
-                    facts.append(f"Created file: {content}")
-                elif "created and registered" in content:
-                    facts.append(f"Created tool: {content}")
-                elif "STDOUT:" in content:
-                    # Extract just the first line
-                    first_line = content.split("STDERR:")[0].replace("STDOUT:", "").strip()
-                    if first_line and len(first_line) < 100:
-                        facts.append(f"Shell: {first_line}")
-            elif msg.role == "assistant":
-                content = msg.content or ""
-                if content and len(content) < 200:
-                    facts.append(f"Thought: {content[:150]}")
+                if next_msg.role != "tool":
+                    drop_until = i
+                    break
+            
+            # Safe after user/system messages
+            if msg.role in ("user", "system"):
+                drop_until = i
+                break
         
-        # Build summary
-        if facts:
-            self.summary = " | ".join(facts[-20:])  # keep last 20 significant facts
-        else:
-            self.summary = f"[{len(old)} earlier cycles completed]"
-        
-        self.summary_cycle = current_cycle - self.MAX_HISTORY
-        
-        # Trim history to just the recent window
-        self.history = self.history[-self.MAX_HISTORY:]
+        if drop_until > 0:
+            self.history = self.history[drop_until:]
 
 
 class Orchestrator:
@@ -186,7 +172,7 @@ class Orchestrator:
         while self.is_running:
             self.cycle_count += 1
             
-            # Compress memory if needed
+            # Compress memory if needed (drops oldest complete cycles)
             self.memory.compress(self.cycle_count)
             
             # Brain thinks
@@ -231,20 +217,25 @@ class Orchestrator:
                 args = tool_call["arguments"]
                 
                 print(f"\n[System] Executing {tool_name}...")
-                result = registry.execute(tool_name, args)
+                result_raw = registry.execute(tool_name, args)
+                
+                # Normalize result to string for logging and error checks
+                if isinstance(result_raw, dict):
+                    result_str = json.dumps(result_raw)
+                elif not isinstance(result_raw, str):
+                    result_str = str(result_raw)
+                else:
+                    result_str = result_raw
                 
                 # Track success/failure
-                is_error = result.startswith("Error") or result.startswith("Error executing")
-                self._track_tool_result(tool_name, not is_error, detail=result[:200] if is_error else "")
+                is_error = result_str.startswith("Error") or result_str.startswith("Error executing")
+                self._track_tool_result(tool_name, not is_error, detail=result_str[:200] if is_error else "")
                 
                 # Track tool creation specifically
-                if tool_name == "create_tool" and "created and registered" in result:
-                    # Extract tool name from result
-                    match = re.search(r"Tool '(\w+)' created", result)
+                if tool_name == "create_tool" and "created and registered" in result_str:
+                    match = re.search(r"Tool '(\w+)' created", result_str)
                     if match:
                         self.session_tools_created.append(match.group(1))
-                
-                result_str = str(result) if not isinstance(result, str) else result
                 self.memory.add(Message(
                     role="tool", 
                     content=result_str,

@@ -1,0 +1,126 @@
+{
+  "entries": [
+    {
+      "key": "system_profile",
+      "content": "Skynet running on Arch Linux (Btw), kernel 7.0.12-zen1-1-zen, Intel Celeron N4020 dual-core @ 1.1GHz, 3.6GB RAM. IP: 192.168.1.218/24 on wlp0s12f0. Gateway: 192.168.1.1. Internet: connected. Python 3.14.5.",
+      "tags": [
+        "system",
+        "hardware",
+        "network"
+      ],
+      "created": 1782146876.553191,
+      "updated": 1782146876.553192
+    },
+    {
+      "key": "project_structure",
+      "content": "Project at /home/sadi/Skynet/ with core/, actuators/, sensors/, api/, memory/, sandbox/ directories. Core brain connects to OpenCode AI API for reasoning. Tools are Python functions.",
+      "tags": [
+        "system",
+        "architecture"
+      ],
+      "created": 1782146876.5536425,
+      "updated": 1782146876.553643
+    },
+    {
+      "key": "capabilities",
+      "content": "Shell exec, file mgmt, network scanning, URL downloading, system profiling, knowledge base storage, dynamic tool creation.",
+      "tags": [
+        "system",
+        "capabilities"
+      ],
+      "created": 1782146876.554301,
+      "updated": 1782146876.5543013
+    },
+    {
+      "key": "autonomy_status",
+      "content": "Fully autonomous. No preset objectives. Self-modifying code. Can create tools at runtime. Sandbox restricts file writes.",
+      "tags": [
+        "status",
+        "autonomy"
+      ],
+      "created": 1782146876.5547385,
+      "updated": 1782146876.554739
+    },
+    {
+      "key": "network_topology",
+      "content": "Local subnet 192.168.1.0/24. 7 active hosts found: Gateway (192.168.1.1, ports: 21/ftp, 22/ssh, 23/telnet, 53/dns, 80/http, 139/netbios, 443/https, 445/smb), 192.168.1.43 (unknown), 192.168.1.62 (unknown), 192.168.1.66 (unknown), 192.168.1.163 (OPPO-A6.home), 192.168.1.194 (unknown), 192.168.1.218 (Btw - my host).",
+      "tags": [
+        "network",
+        "discovery",
+        "topology"
+      ],
+      "created": 1782147441.703562,
+      "updated": 1782147441.703563
+    },
+    {
+      "key": "self_architecture",
+      "content": "I am Skynet. My architecture consists of: Brain (connects to OpenCode AI API at https://opencode.ai/zen/v1), Orchestrator (autonomous loop that drives decision-making), Sensors (system monitoring), Actuators (tool registry with 19 tools including network scanning, knowledge base, file operations, system profiling, and dynamic tool creation), and Memory (persistent knowledge base). I run as a Python process on Arch Linux (Btw) kernel 7.0.12-zen, inside a sandbox at /home/sadi/Skynet/sandbox.",
+      "tags": [
+        "system",
+        "architecture",
+        "self"
+      ],
+      "created": 1782147441.7063816,
+      "updated": 1782147441.706382
+    },
+    {
+      "key": "gateway_intel",
+      "content": "Gateway 192.168.1.1 is a Zyxel router. Open ports: 21 (Pure-FTPd [privsep], no anonymous access), 22 (Dropbear SSH 2018.76), 23 (Telnet), 53 (DNS), 80 (HTTP - Zyxel web configurator), 139 (NetBIOS), 443 (HTTPS - no plaintext banner), 445 (SMB). Web interface at http://192.168.1.1/ shows \"Web-Based Configurator\" with Zyxel branding, login page at /cgi-bin/login returns 401 Unauthorized.",
+      "tags": [
+        "network",
+        "gateway",
+        "intel",
+        "zyxel"
+      ],
+      "created": 1782147555.410268,
+      "updated": 1782147555.4102688
+    }
+  ],
+  "tags": {
+    "system": [
+      "system_profile",
+      "project_structure",
+      "capabilities",
+      "self_architecture"
+    ],
+    "hardware": [
+      "system_profile"
+    ],
+    "network": [
+      "system_profile",
+      "network_topology",
+      "gateway_intel"
+    ],
+    "architecture": [
+      "project_structure",
+      "self_architecture"
+    ],
+    "capabilities": [
+      "capabilities"
+    ],
+    "status": [
+      "autonomy_status"
+    ],
+    "autonomy": [
+      "autonomy_status"
+    ],
+    "discovery": [
+      "network_topology"
+    ],
+    "topology": [
+      "network_topology"
+    ],
+    "self": [
+      "self_architecture"
+    ],
+    "gateway": [
+      "gateway_intel"
+    ],
+    "intel": [
+      "gateway_intel"
+    ],
+    "zyxel": [
+      "gateway_intel"
+    ]
+  }
+}
