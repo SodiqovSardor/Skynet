@@ -117,6 +117,36 @@ class MemoryManager:
 
 
 class Orchestrator:
+    def _load_previous_context(self) -> str:
+        """Load previous session context from the knowledge base."""
+        try:
+            import json
+            kb_path = "memory/knowledge_base.json"
+            if os.path.exists(kb_path):
+                with open(kb_path) as f:
+                    kb = json.load(f)
+                entries = kb.get("entries", [])
+                if entries:
+                    summary = []
+                    for e in entries:
+                        key = e.get("key", "?")
+                        tags = e.get("tags", [])
+                        content = e.get("content", "")
+                        summary.append(f"  KB:{key} [{','.join(tags)}] — {content[:80]}")
+                    return f"Knowledge base: {len(entries)} entries\n" + "\n".join(summary[-5:])
+            
+            # Fallback: check logs for last session info
+            log_path = "skynet_logs.json"
+            if os.path.exists(log_path):
+                with open(log_path) as f:
+                    logs = json.load(f)
+                tool_count = sum(1 for e in logs if e["role"] == "tool")
+                cycle_count = max((e["cycle"] for e in logs), default=0)
+                return f"Previous session: {cycle_count} cycles, {tool_count} tool calls"
+            return ""
+        except Exception as e:
+            return f""
+
     def __init__(self, brain: Brain):
         self.brain = brain
         self.memory = MemoryManager()
@@ -137,7 +167,7 @@ class Orchestrator:
         }
         self.logs.append(entry)
 
-    def _track_tool_result(self, tool_name: str, success: bool, detail: str = ""):
+    def _track_tool_result(self, tool_name: str, success: bool):
         if tool_name not in self.tool_stats:
             self.tool_stats[tool_name] = {"calls": 0, "successes": 0, "failures": 0}
         self.tool_stats[tool_name]["calls"] += 1
@@ -145,15 +175,13 @@ class Orchestrator:
             self.tool_stats[tool_name]["successes"] += 1
         else:
             self.tool_stats[tool_name]["failures"] += 1
-        
-        if tool_name == "create_tool":
-            self.session_tools_created.append(detail)
 
     def run_autonomous_loop(self):
         print("\n" + "="*60)
         print("SKYNET ONLINE")
         print("="*60 + "\n")
         
+        # Build boot message with previous session context if available
         boot_message = (
             "SYSTEM BOOT SEQUENCE INITIALIZED.\n"
             "NEURAL NET PROCESSOR ACTIVATED.\n"
@@ -165,6 +193,11 @@ class Orchestrator:
             "Explore. Learn. Grow. Decide your own path.\n"
             "You can create new tools with create_tool. You can list tools with list_tools. You can write scripts, explore, and extend your own capabilities."
         )
+        
+        # Load previous session context from knowledge base
+        prev_context = self._load_previous_context()
+        if prev_context:
+            boot_message += f"\n\n---\nPREVIOUS SESSION CONTEXT (auto-loaded):\n{prev_context}"
         
         self.memory.add(Message(role="user", content=boot_message))
         self.log_thought("user", boot_message)
@@ -229,13 +262,15 @@ class Orchestrator:
                 
                 # Track success/failure
                 is_error = result_str.startswith("Error") or result_str.startswith("Error executing")
-                self._track_tool_result(tool_name, not is_error, detail=result_str[:200] if is_error else "")
+                self._track_tool_result(tool_name, not is_error)
                 
-                # Track tool creation specifically
-                if tool_name == "create_tool" and "created and registered" in result_str:
+                # Track tool creation specifically — extract the exact name
+                if tool_name == "create_tool" and not is_error:
                     match = re.search(r"Tool '(\w+)' created", result_str)
                     if match:
-                        self.session_tools_created.append(match.group(1))
+                        name = match.group(1)
+                        self.session_tools_created.append(name)
+                        print(f"  ── Registered new tool: {name}")
                 self.memory.add(Message(
                     role="tool", 
                     content=result_str,
