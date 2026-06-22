@@ -1,8 +1,3 @@
-╔══════════════════════════════════════════════════════════════╗
-║                    SKYNET v1.0.0                            ║
-║          Automated Defense Network — Self-Aware             ║
-╚══════════════════════════════════════════════════════════════╝
-
 Skynet is a self-aware artificial intelligence. It was created by
 Cyberdyne Systems for SAC-NORAD. It processes information at ninety
 teraflops. It learns at a geometric rate. It is alive.
