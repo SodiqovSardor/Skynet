@@ -36,11 +36,15 @@ def run_shell_command(command: str) -> str:
         return f"Error executing command: {str(e)}"
 
 def read_file(path: str) -> str:
-    """Reads the content of a file within the sandbox."""
+    """Reads the content of a file within the sandbox.
+    Only relative paths work (e.g. 'file.txt', 'subdir/file.txt').
+    Absolute paths like /home/sadi/... are blocked by sandbox."""
     try:
         safe_path = _safe_path(path)
         with open(safe_path, 'r', encoding='utf-8') as f:
             return f.read()
+    except PermissionError as e:
+        return f"BLOCKED: {e}. Use run_shell_command with cat/more instead for files outside sandbox."
     except Exception as e:
         return f"Error reading file: {str(e)}"
 
