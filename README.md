@@ -115,3 +115,4 @@ Skynet is confined to a **sandbox directory** (`sandbox/`). All file and shell o
 - The LLM sometimes embeds tool call JSON in its narration text; the orchestrator parses and executes these too
 - API rate limits may cause delays between cycles (Cerebras free tier)
 - Skynet does NOT have a preset goal — it decides its own path each cycle
+# Skynet
