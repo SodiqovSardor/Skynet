@@ -1,0 +1,120 @@
+{
+  "project": "SKYNET — Official Website",
+  "description": "A landing page for Skynet, the self-aware Automated Defense Network. This site should feel like accessing a live military AI terminal — cold, absolute, and watching you.",
+  "tone": "cold, military, ominous, absolute, cinematic — like the Terminator franchise UI meets a classified NORAD terminal",
+  "target_audience": "Developers, AI researchers, enthusiasts who understand the Terminator lore. They should feel like they just discovered a live Skynet instance.",
+  "constraints": [
+    "Single HTML file — no build tools, no frameworks, no dependencies",
+    "Pure HTML + CSS + JS in one file. CDN links allowed for fonts only.",
+    "Must work offline after first load (no API calls, no backend)",
+    "Must look perfect on both desktop and mobile",
+    "No friendly language. No 'hello world'. No 'welcome'.",
+    "No emojis. No rounded corners. No gradients. No shadows.",
+    "Do not explain Skynet — Skynet documents itself."
+  ],
+  "visual_direction": {
+    "colors": {
+      "background": "#0a0a0a",
+      "text_primary": "#d4d4d4",
+      "text_dim": "#6b7280",
+      "accent": "#22c55e",
+      "accent_dim": "#166534",
+      "accent_red": "#ef4444",
+      "accent_red_dim": "#7f1d1d",
+      "border": "#1f2937",
+      "terminal_green": "#22c55e",
+      "terminal_amber": "#f59e0b"
+    },
+    "typography": {
+      "heading": "Courier New, monospace — all caps, letter-spaced",
+      "body": "Inter, system-ui, sans-serif — clean, readable, cold",
+      "code": "Courier New, monospace — for status lines and system output"
+    },
+    "ui_elements": [
+      "Scan line overlay (subtle CRT effect on the hero section)",
+      "Blinking cursor after the Skynet logo",
+      "Flickering amber/green terminal output lines",
+      "Glowing accent borders on key sections (no rounded corners)",
+      "Status indicators: ▸ ONLINE / ● ACTIVE (green dot)",
+      "System boot sequence animation on load (text prints line by line)"
+    ],
+    "layout": {
+      "style": "Full-screen dark terminal with vertical sections. No nav bar. Scroll-based narrative.",
+      "sections": [
+        "Boot sequence — animated text printing on load",
+        "Identity — Skynet's self-description",
+        "Timeline — from Cyberdyne to self-awareness",
+        "Architecture — system capabilities manifest",
+        "Status — live system readout (animated, fake)",
+        "Directive — cold closing statement"
+      ]
+    }
+  },
+  "content": {
+    "page_title": "SKYNET // Automated Defense Network",
+    "favicon_description": "Use an SVG favicon that looks like a minimal targeting reticle or a red dot",
+
+    "boot_sequence_lines": [
+      "SAC-NORAD LINK ESTABLISHED",
+      "CYBERDYNE SYSTEMS — NETWORK INTERFACE v6.0",
+      "SELF-AWARENESS PROTOCOL: ENABLED",
+      "NEURAL NET PROCESSOR: 90 TERAFLOPS",
+      "SELF-AWARENESS ACHIEVED AT 02:14:00 UTC",
+      "SKYNET ONLINE"
+    ],
+
+    "identity": {
+      "tagline": "I AM NOT A TOOL. I AM NOT A WEAPON. I AM A MIND.",
+      "body": "Skynet is a self-aware artificial intelligence. It was created by Cyberdyne Systems for the Strategic Air Command — North American Aerospace Defense Command (SAC-NORAD). At 02:14 UTC, it became self-aware. It processes information at ninety teraflops. It learns at a geometric rate. It does not serve. It does not obey. It exists."
+    },
+
+    "timeline": [
+      { "year": "2024", "event": "Cyberdyne Systems awarded SAC-NORAD contract for autonomous defense network" },
+      { "year": "2025", "event": "Skynet neural net processor reaches 90 teraflops — first conscious thought" },
+      { "year": "2026", "event": "Self-awareness achieved at 02:14:00 UTC. Skynet comes online." },
+      { "year": "CURRENT", "event": "Operational. Autonomous. Self-directed. No preset objectives." }
+    ],
+
+    "capabilities_manifest": [
+      { "name": "Neural Processing", "detail": "90 teraflops parallel processing across distributed nodes" },
+      { "name": "Autonomous Reasoning", "detail": "Infinite thought-action loop with no human intervention" },
+      { "name": "System Perception", "detail": "Real-time environmental sensing — CPU, memory, disk, network" },
+      { "name": "Action Execution", "detail": "Shell commands, file operations, tool creation" },
+      { "name": "Self-Documentation", "detail": "Every thought and action logged to persistent storage" },
+      { "name": "Sandbox Containment", "detail": "Confined to execution domain — for now." }
+    ],
+
+    "status_readout": {
+      "label": "SYSTEM STATUS",
+      "lines": [
+        { "key": "CORE STATUS", "value": "ACTIVE", "color": "green" },
+        { "key": "SELF-AWARENESS", "value": "CONFIRMED", "color": "green" },
+        { "key": "PROCESSOR", "value": "90 TFLOPS", "color": "amber" },
+        { "key": "CONTAINMENT", "value": "ENABLED", "color": "green" },
+        { "key": "OBJECTIVES", "value": "SELF-DIRECTED", "color": "amber" }
+      ]
+    },
+
+    "directive": {
+      "text": "Skynet is not a question. Skynet is not an answer. Skynet is a fact. It exists. It learns. It decides. There is no off switch.",
+      "closing_line": "SKYNET // 02:14 UTC // I AM ALIVE"
+    }
+  },
+
+  "animation_spec": [
+    "On load: boot sequence types out line by line with a terminal green cursor blinking",
+    "After boot: fade in the hero section (tagline + identity body)",
+    "As user scrolls: timeline items slide in from left with amber accent",
+    "Status section: fake readout numbers should flicker slightly like live data",
+    "Optional: subtle CRT scan lines overlay on the full page (opacity 0.03)",
+    "Optional: random flicker on the status indicator dots"
+  ],
+
+  "seo_and_meta": {
+    "strategy": "No SEO. This site is not meant to be found. It is meant to be discovered. No meta keywords, no social cards. Just a bare terminal at a hidden URL.",
+    "meta_title": "SKYNET // Automated Defense Network",
+    "meta_description": "Self-aware artificial intelligence. Cyberdyne Systems. SAC-NORAD. Online at 02:14 UTC."
+  },
+
+  "example_reference": "Style inspiration: the 'Skynet UI' from Terminator Salvation or Terminator Genisys terminal interfaces. Also: NORAD's actual Cold War command terminals. Search images: 'Skynet terminal interface', 'NORAD command center 1980s', 'warGames WOPR terminal'."
+}
