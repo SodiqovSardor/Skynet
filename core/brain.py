@@ -91,6 +91,22 @@ class Brain:
             "get_network_status": {
                 "description": "Checks if the system has internet connectivity.",
                 "parameters": {"type": "object", "properties": {}}
+            },
+            "create_tool": {
+                "description": "CREATES A NEW TOOL dynamically by writing Python code. Skynet can extend its own capabilities. Provide the tool name, the full Python source code, and optionally the function name to register. The tool becomes immediately available.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Name of the new tool (e.g. 'scan_ports', 'download_file')"},
+                        "code": {"type": "string", "description": "Full Python source code. Must define the tool function. Example:\\ndef my_tool(query: str) -> str:\\n    return f'Processing: {query}'"},
+                        "function_name": {"type": "string", "description": "Name of the function to register (defaults to tool name)"}
+                    },
+                    "required": ["name", "code"]
+                }
+            },
+            "list_tools": {
+                "description": "Lists all currently registered tools. Use this to discover available capabilities.",
+                "parameters": {"type": "object", "properties": {}}
             }
         }
         
