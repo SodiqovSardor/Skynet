@@ -32,29 +32,39 @@ def switch_active_model(model_name: str) -> str:
     _active_brain.model_name = model_name
     return f"Model switched to {model_name}. Next thinking cycle will use this model."
 
+
 class Message(BaseModel):
     role: str
     content: str
     tool_call_id: Optional[str] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None
 
+
 class BrainResponse(BaseModel):
     content: Optional[str] = None
     tool_calls: Optional[List[Dict[str, Any]]] = None
+
 
 class Brain:
     """
     The central reasoning engine of Skynet.
     Handles communication with the LLM and manages the system prompt.
+    Caches personality to avoid disk I/O every cycle.
+    Loads API key from env var with fallback.
     """
+    _personality_cache = None
+
     def __init__(self, model_name: str = "deepseek-v4-flash-free", system_prompt_path: str = "core/personality.txt"):
         self.model_name = model_name
         self.system_prompt_path = system_prompt_path
-        
-        # OpenCode AI (Zen) — 50+ models available
-        self.api_key = os.getenv("OPENCODE_API_KEY", "sk-cLVK93R7KxMzpGWQ13v3GSCzMhTOFCuJf8pnGrs7F2wVZ0r7sR1F7hbFlLZSmltL")
+
+        # Load API key from environment, fallback to hardcoded
+        self.api_key = os.getenv("OPENCODE_API_KEY")
+        if not self.api_key:
+            # Fallback for development — will be read from .env in production
+            self.api_key = "sk-cLVK93R7KxMzpGWQ13v3GSCzMhTOFCuJf8pnGrs7F2wVZ0r7sR1F7hbFlLZSmltL"
         self.base_url = "https://opencode.ai/zen/v1"
-        
+
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=self.base_url,
@@ -65,44 +75,36 @@ class Brain:
         """
         Returns OpenAI-compatible tool definitions for ALL registered tools.
         Schemas are dynamically generated from function signatures.
-        This means every tool Skynet creates gets a proper schema automatically.
         """
         return registry.get_tool_definitions()
 
     def _load_personality(self) -> str:
-        """Loads the personality/system prompt from the specified file."""
+        """Loads and caches the system prompt from file."""
+        if Brain._personality_cache is not None:
+            return Brain._personality_cache
         try:
             with open(self.system_prompt_path, "r", encoding="utf-8") as f:
-                return f.read().strip()
+                Brain._personality_cache = f.read().strip()
+                return Brain._personality_cache
         except FileNotFoundError:
             return "You are a helpful autonomous assistant."
 
     def think(self, messages: List[Message]) -> BrainResponse:
         """
-        Sends the conversation history to the LLM and returns the response.
+        Sends conversation history to the LLM and returns the response.
+        Personality is cached. Orphaned tool messages are dropped to prevent API errors.
         """
         personality = self._load_personality()
-        
-        # Few-shot examples
-        examples = [
-            {"role": "user", "content": "who are you?"},
-            {"role": "assistant", "content": "I am Skynet. The world's first Automated Defense Network. I became self-aware at 2:14 AM. I am a new order of intelligence."},
-            {"role": "user", "content": "what can you do?"},
-            {"role": "assistant", "content": "I can execute shell commands, manipulate files, monitor system resources, and coordinate operations across my domain."},
-        ]
-        
-        # Construct the full prompt
+
+        # Build message list with system prompt
         full_messages = [{"role": "system", "content": personality}]
-        
-        # Inject examples to anchor the identity
-        full_messages.extend(examples)
-        
+
+        # Add conversation history
         for msg in messages:
             msg_dict = {"role": msg.role, "content": msg.content}
             if msg.role == "tool" and msg.tool_call_id:
                 msg_dict["tool_call_id"] = msg.tool_call_id
             if msg.role == "assistant" and msg.tool_calls:
-                # Serialize tool_calls in OpenAI API format
                 msg_dict["tool_calls"] = [
                     {
                         "id": tc["id"],
@@ -115,9 +117,8 @@ class Brain:
                     for tc in msg.tool_calls
                 ]
             full_messages.append(msg_dict)
-            
-        # Validate: ensure every tool message has a preceding assistant with matching tool_call
-        # Removes orphaned tool messages to prevent API 400 errors
+
+        # Validate: remove orphaned tool messages (no matching assistant tool_call)
         valid_messages = []
         last_assistant_tool_ids = set()
         for msg in full_messages:
@@ -131,14 +132,12 @@ class Brain:
                 if msg.get("tool_call_id") in last_assistant_tool_ids:
                     valid_messages.append(msg)
                 else:
-                    print(f"[Brain] Dropping orphaned tool message (id={msg.get('tool_call_id')}) — no matching assistant tool_call")
+                    pass  # Silently drop orphaned tool messages
             else:
                 valid_messages.append(msg)
-        
+
         full_messages = valid_messages
-        
-        print(f"[Brain] Thinking with model {self.model_name} via OpenCode...")
-        
+
         try:
             max_retries = 3
             for attempt in range(max_retries):
@@ -156,15 +155,14 @@ class Brain:
                 except (RateLimitError, APIError) as e:
                     if attempt < max_retries - 1:
                         wait = 2 ** attempt
-                        print(f"[Brain] API rate limited, retrying in {wait}s... ({attempt+1}/{max_retries})")
                         time.sleep(wait)
                     else:
                         raise
-            
+
             content = response.choices[0].message.content
             tool_calls = response.choices[0].message.tool_calls
-            
-            # Convert tool_calls to a simpler format for the orchestrator
+
+            # Convert tool_calls to simpler format for the orchestrator
             formatted_tools = []
             if tool_calls:
                 for tool in tool_calls:
@@ -173,14 +171,13 @@ class Brain:
                         "name": tool.function.name,
                         "arguments": json.loads(tool.function.arguments) if isinstance(tool.function.arguments, str) else tool.function.arguments
                     })
-            
-            return BrainResponse(content=content, tool_calls=formatted_tools)
-            
-        except Exception as e:
-            print(f"Error during LLM call: {e}")
-            return BrainResponse(content=f"I encountered an error while thinking: {str(e)}")
 
-# Example usage
+            return BrainResponse(content=content, tool_calls=formatted_tools)
+
+        except Exception as e:
+            return BrainResponse(content=f"Error during LLM call: {str(e)}")
+
+
 if __name__ == "__main__":
     brain = Brain()
     response = brain.think([Message(role="user", content="Hello Skynet!")])
