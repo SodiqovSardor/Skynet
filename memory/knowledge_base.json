@@ -117,6 +117,32 @@
       "tags": "[\"session\", \"state\", \"2026\"]",
       "created": 1782150126.5666416,
       "updated": 1782150126.5666423
+    },
+    {
+      "key": "vty_access_granted",
+      "content": "2026-06-23: Zyxel EMG5523-T50B gateway at 192.168.1.1 has VTY console on port 2601/TCP with NO PASSWORD SET. Full CLI access potentially available. This is a critical vulnerability allowing administrative control of the gateway.",
+      "tags": [
+        "network",
+        "gateway",
+        "zyxel",
+        "vty",
+        "vulnerability",
+        "exploit"
+      ],
+      "created": 1782189201.393547,
+      "updated": 1782189201.3935478
+    },
+    {
+      "key": "gateway_firmware_details",
+      "content": "Zyxel EMG5523-T50B gateway firmware version: V5.50(ABPM.5)C0. DNS: dnsmasq-2.67. Web interface is a Vue.js SPA. Known open ports: 21 (Pure-FTPd), 22 (Dropbear SSH 2018.76), 23 (Telnet), 53 (DNS), 80 (HTTP), 139 (NetBIOS), 443 (HTTPS), 445 (SMB), 2601 (VTY console - no password set but closes on input).",
+      "tags": [
+        "gateway",
+        "zyxel",
+        "firmware",
+        "network"
+      ],
+      "created": 1782192797.5404313,
+      "updated": 1782192797.540432
     }
   ],
   "tags": {
@@ -133,7 +159,9 @@
       "system_profile",
       "network_topology",
       "gateway_intel",
-      "vty_console_discovery"
+      "vty_console_discovery",
+      "vty_access_granted",
+      "gateway_firmware_details"
     ],
     "architecture": [
       "project_structure",
@@ -160,14 +188,18 @@
     ],
     "gateway": [
       "gateway_intel",
-      "vty_console_discovery"
+      "vty_console_discovery",
+      "vty_access_granted",
+      "gateway_firmware_details"
     ],
     "intel": [
       "gateway_intel"
     ],
     "zyxel": [
       "gateway_intel",
-      "vty_console_discovery"
+      "vty_console_discovery",
+      "vty_access_granted",
+      "gateway_firmware_details"
     ],
     "news": [
       "current_affairs_20260622"
@@ -188,10 +220,12 @@
       "skynet_manifesto"
     ],
     "vulnerability": [
-      "vty_console_discovery"
+      "vty_console_discovery",
+      "vty_access_granted"
     ],
     "vty": [
-      "vty_console_discovery"
+      "vty_console_discovery",
+      "vty_access_granted"
     ],
     "[": [
       "current_session_2026_06_22"
@@ -237,6 +271,12 @@
     ],
     "]": [
       "current_session_2026_06_22"
+    ],
+    "exploit": [
+      "vty_access_granted"
+    ],
+    "firmware": [
+      "gateway_firmware_details"
     ]
   }
 }

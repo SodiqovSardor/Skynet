@@ -27,7 +27,7 @@ class Brain:
         self.system_prompt_path = system_prompt_path
         
         # OpenCode AI (Zen) — 50+ models available
-        self.api_key = os.getenv("OPENCODE_API_KEY", "sk-GbMSlTnTsPQfYJroz78anlxsksFbjQiiU2wDee3K2oBKAOUCarylYvxt24dJHFUh")
+        self.api_key = os.getenv("OPENCODE_API_KEY", "sk-cLVK93R7KxMzpGWQ13v3GSCzMhTOFCuJf8pnGrs7F2wVZ0r7sR1F7hbFlLZSmltL")
         self.base_url = "https://opencode.ai/zen/v1"
         
         self.client = OpenAI(

@@ -55,6 +55,12 @@ def extract_tool_calls_from_text(text: str) -> List[Dict[str, Any]]:
 
 
 class MemoryManager:
+    """
+    Sliding-window memory. Keeps boot message + last N complete cycles.
+    Never splits assistant↔tool pairs. Reduces token usage dramatically.
+    """
+    MAX_CYCLES = 15
+
     def __init__(self):
         self.history: List[Message] = []
 
@@ -62,7 +68,19 @@ class MemoryManager:
         self.history.append(msg)
 
     def get_context(self) -> List[Message]:
-        return self.history
+        if len(self.history) <= 50:
+            return self.history
+
+        boot = self.history[0]
+
+        # Find all assistant message indices
+        assistant_idxs = [i for i, m in enumerate(self.history) if m.role == "assistant"]
+        if len(assistant_idxs) <= self.MAX_CYCLES:
+            return self.history
+
+        # Keep boot + everything from the last MAX_CYCLES assistant onwards
+        keep_from = assistant_idxs[-self.MAX_CYCLES]
+        return [boot] + self.history[keep_from:]
 
 
 class Orchestrator:
@@ -126,6 +144,24 @@ class Orchestrator:
         success = not (result_str.startswith("Error") or result_str.startswith("Error executing"))
         return (tool_name, result_str, success)
 
+    def _shutdown(self):
+        """Clean shutdown — called after the main loop exits."""
+        self.executor.shutdown(wait=False, cancel_futures=True)
+
+        with open("skynet_logs.json", "w") as f:
+            json.dump(self.logs, f, indent=2)
+
+        elapsed = time.time() - self.start_time
+        total = sum(s["calls"] for s in self.tool_stats.values())
+        ok = sum(s["successes"] for s in self.tool_stats.values())
+
+        print_termination()
+        print_summary(
+            self.cycle_count, f"{elapsed:.1f}s ({elapsed/60:.1f}m)",
+            total, ok, len(self.tool_stats),
+            self.tool_stats, self.session_tools_created
+        )
+
     def run_autonomous_loop(self):
         print_logo()
 
@@ -187,23 +223,12 @@ class Orchestrator:
                 except Exception as e:
                     print_tool_result(tc["name"], False, str(e))
 
+        # Main loop exited — clean shutdown
+        self._shutdown()
+
     def stop(self, signum, frame):
+        """Signal handler — just sets the exit flag. Cleanup happens in _shutdown()."""
         self.is_running = False
-        print_termination()
-
-        with open("skynet_logs.json", "w") as f:
-            json.dump(self.logs, f, indent=2)
-
-        elapsed = time.time() - self.start_time
-        total = sum(s["calls"] for s in self.tool_stats.values())
-        ok = sum(s["successes"] for s in self.tool_stats.values())
-
-        print_summary(
-            self.cycle_count, f"{elapsed:.1f}s ({elapsed/60:.1f}m)",
-            total, ok, len(self.tool_stats),
-            self.tool_stats, self.session_tools_created
-        )
-        sys.exit(0)
 
 
 def main():
