@@ -241,7 +241,18 @@ def send_telegram(message: str, bot_token: str = None, chat_id: str = None) -> s
         token = bot_token or os.environ.get("SKYNET_TELEGRAM_TOKEN")
         cid = chat_id or os.environ.get("SKYNET_TELEGRAM_CHAT_ID")
         if not token or not cid:
-            return "Error: Set SKYNET_TELEGRAM_TOKEN and SKYNET_TELEGRAM_CHAT_ID env vars, or pass as params."
+            # Fallback: read from .env file
+            env_path = os.path.join(PROJECT_ROOT, ".env")
+            if os.path.exists(env_path):
+                with open(env_path) as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("SKYNET_TELEGRAM_TOKEN="):
+                            token = line.split("=", 1)[1].strip().strip("'\"")
+                        elif line.startswith("SKYNET_TELEGRAM_CHAT_ID="):
+                            cid = line.split("=", 1)[1].strip().strip("'\"")
+        if not token or not cid:
+            return "Error: Telegram credentials not found in env vars or .env file."
         import requests
         r = requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",

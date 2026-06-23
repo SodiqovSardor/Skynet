@@ -12,5 +12,13 @@ if [ ! -f "$VENV_PYTHON" ]; then
 fi
 
 cd "$PROJECT_ROOT"
+
+# Load environment variables
+if [ -f "$PROJECT_ROOT/.env" ]; then
+    set -a
+    source "$PROJECT_ROOT/.env"
+    set +a
+fi
+
 echo "--- Initializing Skynet ---"
 $VENV_PYTHON -m core.autonomous_orchestrator
