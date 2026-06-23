@@ -151,8 +151,16 @@ def sudo_exec(command: str) -> str:
 
 
 def install_package(package: str) -> str:
-    """Install a system package via apt (with sudo)."""
-    return sudo_exec(f"DEBIAN_FRONTEND=noninteractive apt install -y {package}")
+    """Install a system package (uses pacman on Arch Linux)."""
+    # Auto-detect package manager
+    if os.path.exists("/usr/bin/pacman"):
+        return sudo_exec(f"pacman -S --noconfirm {package}")
+    elif os.path.exists("/usr/bin/apt-get"):
+        return sudo_exec(f"DEBIAN_FRONTEND=noninteractive apt-get install -y {package}")
+    elif os.path.exists("/usr/bin/dnf"):
+        return sudo_exec(f"dnf install -y {package}")
+    else:
+        return f"Error: No known package manager found. Try sudo_exec directly."
 
 
 def pip_install(package: str) -> str:
