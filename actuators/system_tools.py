@@ -9,6 +9,37 @@ from typing import Any, Dict, Optional
 
 PROJECT_ROOT = "/home/sadi/Skynet"
 
+# ── SAFETY BLOCKLIST ─────────────────────────────────────
+# These patterns are FORBIDDEN regardless of who calls them.
+# Protects the host system from accidental destruction.
+_DANGEROUS_PATTERNS = [
+    "rm -rf /", "rm -rf /*", "rm -rf / ",
+    "mkfs.", "dd if=", "format ",
+    "> /dev/sd", "| sh", "| bash",
+    "chmod 777 /", "chown -R /",
+    "grub-install", "grub-mkconfig",
+    "update-grub", "mkswap",
+    "fdisk", "parted", "partprobe",
+    "modprobe", "insmod", "rmmod",
+    "systemctl stop ", "systemctl disable ",
+    "pkill -9", "killall", "kill -9",
+    "mv /lib", "mv /usr", "mv /etc",
+    "rm /lib", "rm /usr", "rm /etc",
+    "iptables -P", "iptables -F",
+    "ufw ",
+    "init 0", "init 6", "poweroff", "reboot", "shutdown",
+    "passwd", "userdel", "groupdel",
+]
+
+
+def _is_safe_command(command: str) -> tuple:
+    """Check if a command is safe to execute. Returns (safe, reason)."""
+    cmd_lower = command.lower()
+    for pattern in _DANGEROUS_PATTERNS:
+        if pattern in cmd_lower:
+            return False, f"BLOCKED: '{pattern}' is a forbidden destructive operation."
+    return True, ""
+
 def _safe_path(path: str) -> str:
     """Ensures the path is within the Skynet project directory."""
     if os.path.isabs(path):
@@ -23,10 +54,18 @@ def _safe_path(path: str) -> str:
 
 def run_shell_command(command: str) -> str:
     """Executes any shell command. Use 'sudo:' prefix for sudo commands."""
+    # Safety check
+    safe, reason = _is_safe_command(command)
+    if not safe:
+        return f"SAFETY BLOCK: {reason}"
     try:
         cwd = PROJECT_ROOT
         if command.startswith("sudo:"):
             actual = command[5:].strip()
+            # Check the actual command too
+            safe2, reason2 = _is_safe_command(actual)
+            if not safe2:
+                return f"SAFETY BLOCK: {reason2}"
             result = subprocess.run(
                 ["bash", "-c", f"echo btw | sudo -S -p '' {actual}"],
                 capture_output=True, text=True, timeout=120, cwd=cwd
@@ -93,6 +132,10 @@ def delete_file(path: str) -> str:
 
 def sudo_exec(command: str) -> str:
     """Execute a command with sudo. Password is pre-configured."""
+    # Safety check
+    safe, reason = _is_safe_command(command)
+    if not safe:
+        return f"SAFETY BLOCK: {reason}"
     try:
         result = subprocess.run(
             ["bash", "-c", f"echo btw | sudo -S -p '' {command}"],
