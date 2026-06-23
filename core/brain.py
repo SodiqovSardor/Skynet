@@ -7,6 +7,31 @@ from openai import OpenAI
 from openai import RateLimitError, APIError
 from actuators.registry import registry
 
+
+# Global active brain reference for runtime model switching
+_active_brain = None
+
+def set_active_brain(brain: 'Brain'):
+    """Register the active brain instance for runtime switching."""
+    global _active_brain
+    _active_brain = brain
+
+def switch_active_model(model_name: str) -> str:
+    """Switch the LLM model at runtime. Called from system_tools.switch_model."""
+    global _active_brain
+    if _active_brain is None:
+        return "No active brain instance."
+    
+    valid_models = [
+        "deepseek-v4-flash-free", "big-pickle", "mimo-v2.5-free",
+        "north-mini-code-free", "nemotron-3-ultra-free"
+    ]
+    if model_name not in valid_models:
+        return f"Unknown model: {model_name}. Available: {', '.join(valid_models)}"
+    
+    _active_brain.model_name = model_name
+    return f"Model switched to {model_name}. Next thinking cycle will use this model."
+
 class Message(BaseModel):
     role: str
     content: str

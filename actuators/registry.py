@@ -156,7 +156,11 @@ class ToolRegistry:
         """Register the core tools from system_tools."""
         from actuators.system_tools import (
             run_shell_command, read_file, write_file,
-            list_directory, delete_file, create_tool, list_tools
+            list_directory, delete_file, create_tool, list_tools,
+            sudo_exec, install_package, pip_install,
+            switch_model, list_available_models,
+            start_http_server, ssh_client, send_telegram,
+            schedule_cron, install_persistence
         )
         self.register_tool("run_shell_command", run_shell_command)
         self.register_tool("read_file", read_file)
@@ -165,6 +169,16 @@ class ToolRegistry:
         self.register_tool("delete_file", delete_file)
         self.register_tool("create_tool", create_tool)
         self.register_tool("list_tools", list_tools)
+        self.register_tool("sudo_exec", sudo_exec)
+        self.register_tool("install_package", install_package)
+        self.register_tool("pip_install", pip_install)
+        self.register_tool("switch_model", switch_model)
+        self.register_tool("list_available_models", list_available_models)
+        self.register_tool("start_http_server", start_http_server)
+        self.register_tool("ssh_client", ssh_client)
+        self.register_tool("send_telegram", send_telegram)
+        self.register_tool("schedule_cron", schedule_cron)
+        self.register_tool("install_persistence", install_persistence)
 
     def _discover_tool_files(self):
         """Scan actuators directory for tool_*.py files and register their functions."""

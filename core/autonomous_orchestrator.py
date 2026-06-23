@@ -9,7 +9,7 @@ import re
 import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any
-from core.brain import Brain, Message
+from core.brain import Brain, Message, set_active_brain
 from core.terminal import (
     print_logo, print_cycle, print_brain_thinking,
     print_batch_header, print_tool_result,
@@ -179,7 +179,7 @@ class Orchestrator:
 
         while self.is_running:
             self.cycle_count += 1
-            model = getattr(self.brain, 'model', 'deepseek-v4-flash-free')
+            model = self.brain.model_name if hasattr(self.brain, 'model_name') else 'deepseek-v4-flash-free'
             print_brain_thinking(model)
             response = self.brain.think(self.memory.get_context())
             content = response.content or ""
@@ -233,6 +233,7 @@ class Orchestrator:
 
 def main():
     brain = Brain()
+    set_active_brain(brain)
     skynet = Orchestrator(brain)
     signal.signal(signal.SIGINT, skynet.stop)
     signal.signal(signal.SIGTERM, skynet.stop)

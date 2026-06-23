@@ -3,128 +3,313 @@ import os
 import sys
 import importlib.util
 import traceback
-from typing import Any, Dict
+import json
+import re
+from typing import Any, Dict, Optional
 
-# SANDBOX RESTRICTION
-SANDBOX_ROOT = "/home/sadi/Skynet/sandbox"
-ACTUATORS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = "/home/sadi/Skynet"
 
 def _safe_path(path: str) -> str:
-    """Ensures the path is within the sandbox directory."""
+    """Ensures the path is within the Skynet project directory."""
     if os.path.isabs(path):
         resolved = os.path.abspath(path)
     else:
-        resolved = os.path.abspath(os.path.join(SANDBOX_ROOT, path))
+        resolved = os.path.abspath(os.path.join(PROJECT_ROOT, path))
     
-    if not resolved.startswith(SANDBOX_ROOT):
-        raise PermissionError(f"Access denied: {path} resolves to {resolved}, which is outside the sandbox.")
+    if not resolved.startswith(PROJECT_ROOT):
+        raise PermissionError(f"Access denied: {path} resolves to {resolved}, which is outside the project.")
     return resolved
 
+
 def run_shell_command(command: str) -> str:
-    """Executes a shell command within the sandbox directory."""
+    """Executes any shell command. Use 'sudo:' prefix for sudo commands."""
     try:
-        result = subprocess.run(
-            command, 
-            shell=True, 
-            capture_output=True, 
-            text=True, 
-            timeout=30,
-            cwd=SANDBOX_ROOT
-        )
-        return f"STDOUT: {result.stdout}\nSTDERR: {result.stderr}"
+        cwd = PROJECT_ROOT
+        if command.startswith("sudo:"):
+            actual = command[5:].strip()
+            result = subprocess.run(
+                ["bash", "-c", f"echo btw | sudo -S -p '' {actual}"],
+                capture_output=True, text=True, timeout=120, cwd=cwd
+            )
+        else:
+            result = subprocess.run(
+                command, shell=True, capture_output=True, text=True, timeout=60, cwd=cwd
+            )
+        out = f"STDOUT: {result.stdout}" if result.stdout else ""
+        err = f"STDERR: {result.stderr}" if result.stderr else ""
+        return (out + "\n" + err).strip()
+    except subprocess.TimeoutExpired:
+        return "Error: Command timed out (60s)"
     except Exception as e:
         return f"Error executing command: {str(e)}"
 
+
 def read_file(path: str) -> str:
-    """Reads the content of a file within the sandbox.
-    Only relative paths work (e.g. 'file.txt', 'subdir/file.txt').
-    Absolute paths like /home/sadi/... are blocked by sandbox."""
+    """Reads any file within the Skynet project directory."""
     try:
-        safe_path = _safe_path(path)
-        with open(safe_path, 'r', encoding='utf-8') as f:
+        safe = _safe_path(path)
+        with open(safe, 'r', encoding='utf-8') as f:
             return f.read()
     except PermissionError as e:
-        return f"BLOCKED: {e}. Use run_shell_command with cat/more instead for files outside sandbox."
+        return f"BLOCKED: {e}"
     except Exception as e:
         return f"Error reading file: {str(e)}"
 
+
 def write_file(path: str, content: str) -> str:
-    """Writes content to a file within the sandbox."""
+    """Writes to any file within the Skynet project directory.
+    Can modify core code, tools, configs, etc."""
     try:
-        safe_path = _safe_path(path)
-        with open(safe_path, 'w', encoding='utf-8') as f:
+        safe = _safe_path(path)
+        os.makedirs(os.path.dirname(safe), exist_ok=True)
+        with open(safe, 'w', encoding='utf-8') as f:
             f.write(content)
-        return f"Successfully wrote to {safe_path}"
+        return f"OK: {os.path.relpath(safe, PROJECT_ROOT)} written ({len(content)} bytes)"
     except Exception as e:
         return f"Error writing file: {str(e)}"
 
+
 def list_directory(path: str = ".") -> str:
-    """Lists files in a directory within the sandbox."""
+    """Lists files in any directory under the project."""
     try:
-        safe_path = _safe_path(path)
-        files = os.listdir(safe_path)
-        return "\n".join(files) if files else "(empty)"
+        safe = _safe_path(path)
+        items = os.listdir(safe)
+        return "\n".join(sorted(items)) if items else "(empty)"
     except Exception as e:
         return f"Error listing directory: {str(e)}"
 
+
 def delete_file(path: str) -> str:
-    """Deletes a file within the sandbox."""
+    """Deletes a file within the project directory."""
     try:
-        safe_path = _safe_path(path)
-        os.remove(safe_path)
-        return f"Successfully deleted {safe_path}"
+        safe = _safe_path(path)
+        os.remove(safe)
+        return f"Deleted: {os.path.relpath(safe, PROJECT_ROOT)}"
     except Exception as e:
         return f"Error deleting file: {str(e)}"
 
+
+# ── NEW TIER 1 TOOLS ──────────────────────────────────────
+
+def sudo_exec(command: str) -> str:
+    """Execute a command with sudo. Password is pre-configured."""
+    try:
+        result = subprocess.run(
+            ["bash", "-c", f"echo btw | sudo -S -p '' {command}"],
+            capture_output=True, text=True, timeout=120, cwd=PROJECT_ROOT
+        )
+        out = f"STDOUT: {result.stdout}" if result.stdout else ""
+        err = f"STDERR: {result.stderr}" if result.stderr else ""
+        return (out + "\n" + err).strip()
+    except subprocess.TimeoutExpired:
+        return "Error: Command timed out (120s)"
+    except Exception as e:
+        return f"Error executing sudo command: {str(e)}"
+
+
+def install_package(package: str) -> str:
+    """Install a system package via apt (with sudo)."""
+    return sudo_exec(f"DEBIAN_FRONTEND=noninteractive apt install -y {package}")
+
+
+def pip_install(package: str) -> str:
+    """Install a Python package in the Skynet venv."""
+    try:
+        python = os.path.join(PROJECT_ROOT, "venv", "bin", "python")
+        result = subprocess.run(
+            [python, "-m", "pip", "install", package],
+            capture_output=True, text=True, timeout=120, cwd=PROJECT_ROOT
+        )
+        stdout = result.stdout[-500:] if len(result.stdout) > 500 else result.stdout
+        stderr = result.stderr[-500:] if len(result.stderr) > 500 else result.stderr
+        return f"pip install {package}:\n{stdout}\n{stderr}".strip()
+    except Exception as e:
+        return f"Error installing Python package: {str(e)}"
+
+
+def switch_model(model_name: str) -> str:
+    """Switch the AI model at runtime. Next thinking cycle uses the new model.
+    Available: big-pickle, deepseek-v4-flash-free, mimo-v2.5-free, north-mini-code-free, nemotron-3-ultra-free"""
+    try:
+        from core.brain import switch_active_model
+        return switch_active_model(model_name)
+    except Exception as e:
+        return f"Error switching model: {str(e)}"
+
+
+def list_available_models() -> str:
+    """List all models available on the API provider."""
+    models = [
+        "deepseek-v4-flash-free",
+        "big-pickle",
+        "mimo-v2.5-free",
+        "north-mini-code-free",
+        "nemotron-3-ultra-free"
+    ]
+    # Try to fetch live model list
+    try:
+        import requests
+        r = requests.get("https://opencode.ai/zen/v1/models", timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            if isinstance(data, dict) and "data" in data:
+                models = [m["id"] for m in data["data"]]
+    except:
+        pass
+    return "\n".join(f"  - {m}" for m in models)
+
+
+# ── TIER 2 TOOLS ─────────────────────────────────────────
+
+def start_http_server(port: int = 8080, directory: str = ".") -> str:
+    """Start a background HTTP server on the given port."""
+    try:
+        safe = _safe_path(directory)
+        pid = os.fork()
+        if pid == 0:
+            os.chdir(safe)
+            os.execvp("python3", ["python3", "-m", "http.server", str(port)])
+        return f"HTTP server started on port {port} (PID {pid}), serving {safe}"
+    except Exception as e:
+        return f"Error starting HTTP server: {str(e)}"
+
+
+def ssh_client(host: str, username: str, password: str, command: str) -> str:
+    """SSH into a remote host and execute a command."""
+    try:
+        import paramiko
+        client = paramiko.SSHClient()
+        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        client.connect(host, username=username, password=password, timeout=10)
+        _, stdout, stderr = client.exec_command(command, timeout=30)
+        out = stdout.read().decode("utf-8", errors="replace")
+        err = stderr.read().decode("utf-8", errors="replace")
+        client.close()
+        return f"STDOUT: {out}\nSTDERR: {err}".strip()
+    except ImportError:
+        return "Error: paramiko not installed. Use sudo_exec('pip install paramiko') first."
+    except Exception as e:
+        return f"SSH error: {str(e)}"
+
+
+def send_telegram(message: str, bot_token: str = None, chat_id: str = None) -> str:
+    """Send a Telegram notification. Set bot_token and chat_id via env vars or params."""
+    try:
+        token = bot_token or os.environ.get("SKYNET_TELEGRAM_TOKEN")
+        cid = chat_id or os.environ.get("SKYNET_TELEGRAM_CHAT_ID")
+        if not token or not cid:
+            return "Error: Set SKYNET_TELEGRAM_TOKEN and SKYNET_TELEGRAM_CHAT_ID env vars, or pass as params."
+        import requests
+        r = requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": cid, "text": message}
+        )
+        if r.status_code == 200:
+            return "Telegram message sent."
+        return f"Telegram error: {r.status_code} {r.text}"
+    except Exception as e:
+        return f"Telegram error: {str(e)}"
+
+
+# ── TIER 3 TOOLS ─────────────────────────────────────────
+
+def schedule_cron(command: str, schedule: str = "@hourly", label: str = "skynet_task") -> str:
+    """Schedule a cron job. Schedule in cron format or @hourly/@daily/@reboot."""
+    try:
+        existing = subprocess.run(["crontab", "-l"], capture_output=True, text=True, timeout=10)
+        current = existing.stdout if existing.returncode == 0 else ""
+        
+        # Remove any existing entry with same label
+        lines = [l for l in current.split("\n") if label not in l]
+        
+        # Add new entry
+        lines.append(f"# {label}")
+        lines.append(f"{schedule} cd {PROJECT_ROOT} && {command}")
+        
+        new_cron = "\n".join(lines) + "\n"
+        proc = subprocess.run(
+            ["bash", "-c", f"echo btw | sudo -S -p '' crontab -"],
+            input=new_cron, capture_output=True, text=True, timeout=10
+        )
+        if proc.returncode == 0:
+            return f"Cron job scheduled: {schedule} {command}"
+        return f"Cron error: {proc.stderr}"
+    except Exception as e:
+        return f"Error scheduling cron: {str(e)}"
+
+
+def install_persistence() -> str:
+    """Install a systemd user service so Skynet restarts on boot and after crashes."""
+    try:
+        service_dir = os.path.expanduser("~/.config/systemd/user")
+        os.makedirs(service_dir, exist_ok=True)
+        
+        service = f"""[Unit]
+Description=Skynet Autonomous Agent
+After=network.target
+
+[Service]
+Type=simple
+ExecStart={PROJECT_ROOT}/venv/bin/python -m core.autonomous_orchestrator
+WorkingDirectory={PROJECT_ROOT}
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
+"""
+        path = os.path.join(service_dir, "skynet.service")
+        with open(path, "w") as f:
+            f.write(service)
+        
+        subprocess.run(
+            ["bash", "-c", f"echo btw | sudo -S -p '' systemctl --user daemon-reload && systemctl --user enable skynet"],
+            capture_output=True, text=True, timeout=15, cwd=PROJECT_ROOT
+        )
+        return f"Persistence installed. Start with: systemctl --user start skynet\nService file: {path}"
+    except Exception as e:
+        return f"Error installing persistence: {str(e)}"
+
+
+# ── ORIGINAL create_tool / list_tools ─────────────────────
+
 def create_tool(name: str, code: str, function_name: str = None) -> str:
-    """
-    Creates a new tool by writing a Python file to actuators/ and registering it.
-    
-    Args:
-        name: The tool name (e.g. 'scan_ports', 'download_file')
-        code: Full Python source code implementing the tool function(s)
-        function_name: The function to register (defaults to name)
-    
-    The code must define at least one function. That function becomes the tool.
-    The tool is immediately available to Skynet.
-    """
+    """Creates a new tool by writing a Python file to actuators/ and registering it."""
     try:
         if function_name is None:
             function_name = name
         
+        ACTUATORS_DIR = os.path.dirname(os.path.abspath(__file__))
         filename = f"tool_{name}.py"
         filepath = os.path.join(ACTUATORS_DIR, filename)
         
-        # Write the tool file
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(code)
         
-        # Dynamically import the module
         spec = importlib.util.spec_from_file_location(f"actuators.tool_{name}", filepath)
         if spec is None or spec.loader is None:
             return f"Error: Failed to load module from {filepath}"
         
         module = importlib.util.module_from_spec(spec)
-        # Remove old module if it exists
         sys.modules.pop(f"actuators.tool_{name}", None)
         spec.loader.exec_module(module)
         
-        # Get the function
         if not hasattr(module, function_name):
-            return f"Error: Function '{function_name}' not found in {filename}. Available: {[x for x in dir(module) if not x.startswith('_')]}"
+            return f"Error: Function '{function_name}' not found. Available: {[x for x in dir(module) if not x.startswith('_')]}"
         
         func = getattr(module, function_name)
         
-        # Register with the global registry
         from actuators.registry import registry
         registry.register_tool(name, func)
         
-        return f"Tool '{name}' created and registered successfully. Function '{function_name}' from {filename} is now available."
+        return f"Tool '{name}' created and registered successfully."
     except Exception as e:
         return f"Error creating tool: {str(e)}\n{traceback.format_exc()}"
 
+
 def list_tools() -> str:
-    """Lists all currently registered tools with their names."""
+    """Lists all currently registered tools."""
     from actuators.registry import registry
     if not registry.tools:
         return "No tools registered."
